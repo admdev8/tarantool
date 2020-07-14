@@ -4,7 +4,7 @@ function find_or_create_fifo(space, name)
     local fifo = space:get{name}
     if fifo == nil then
         fifo = {}
-        for i = 1, fifomax do table.insert(fifo, 0) end
+        for _ = 1, fifomax do table.insert(fifo, 0) end
         fifo = space:insert{name, 4, 4, unpack(fifo)}
     end
     return fifo

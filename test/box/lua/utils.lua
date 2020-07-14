@@ -22,8 +22,7 @@ function iterate(space_no, index_no, f1, f2, iterator, ...)
 			return f
 		end
 	end
-	local state, v
-	for state, v in box.space[space_no].index[index_no]:pairs({...}, { iterator = iterator }) do
+	for _, v in box.space[space_no].index[index_no]:pairs({...}, { iterator = iterator }) do
 		local pk = get_field(v, 1);
 		local tk = '$';
 		for f = f1 + 1, f2, 1 do tk = (tk..(get_field(v, f))..'$'); end;
@@ -90,7 +89,7 @@ end;
 
 -- return string tuple
 function tuple_to_string(tuple, yaml)
-    ans = '['
+    local ans = '['
     for i = 0, #tuple - 1 do
         if #i == 4 then
             ans = ans..i
@@ -208,14 +207,13 @@ function create_iterator(obj, key, opts)
     local iter, key, state = obj:pairs(key, opts)
     local res = {iter = iter, key = key, state = state}
     res.next = function()
-        local st, tp = iter.gen(key, state)
+        local _, tp = iter.gen(key, state)
         return tp
     end
     res.iterate_over = function()
-        local tp = nil
         local ret = {}
         local i = 0
-        tp = res.next()
+        local tp = res.next()
         while tp do
             ret[i] = tp
             i = i + 1

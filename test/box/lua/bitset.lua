@@ -1,8 +1,5 @@
 local utils = require('utils')
 
-local SPACE_NO = 0 
-local INDEX_NO = 1
-
 function create_space()
     local space = box.schema.create_space('tweedledum')
     space:create_index('primary', { type = 'hash', parts = {1, 'unsigned'}, unique = true })
@@ -13,7 +10,7 @@ function fill(...)
     local space = box.space['tweedledum']
     local nums = utils.table_generate(utils.arithmetic(...))
     utils.table_shuffle(nums)
-    for _k, v in ipairs(nums) do
+    for _, v in ipairs(nums) do
         space:insert{v, v}
     end
 end
@@ -22,7 +19,7 @@ function delete(...)
     local space = box.space['tweedledum']
     local nums = utils.table_generate(utils.arithmetic(...))
     utils.table_shuffle(nums)
-    for _k, v in ipairs(nums) do
+    for _, v in ipairs(nums) do
         space:delete{v}
     end
 end

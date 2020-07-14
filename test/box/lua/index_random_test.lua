@@ -7,7 +7,7 @@ function index_random_test(space, index_no)
 	-- insert values into the index
 	for k=1,COUNT,1 do space:insert{k}  end
 	-- delete some values from the index
-	for i=1,COUNT/2,1 do
+	for _=1,COUNT/2,1 do
 		local k = math.random(COUNT)
 		local tuple = space:delete{k}
 		if tuple ~= nil then COUNT = COUNT - 1 end
