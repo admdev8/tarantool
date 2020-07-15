@@ -41,7 +41,6 @@ exclude_files = {
     "test/box/lua/test_init.lua",
     "test/engine/*.test.lua",
     "test/engine_long/*.test.lua",
-    "test/long_run-py/**/*.lua",
     "test/luajit-tap/**/*.lua",
     "test/replication/**/*.lua",
     "test/replication-py/**/*.lua",
@@ -182,6 +181,12 @@ files["test/engine/conflict.lua"] = {
     }
 }
 files["test/engine_long/suite.lua"] = {
+    globals = {
+        "delete_replace_update",
+        "delete_insert",
+    }
+}
+files["test/long_run-py/suite.lua"] = {
     globals = {
         "delete_replace_update",
         "delete_insert",
