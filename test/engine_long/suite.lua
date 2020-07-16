@@ -2,7 +2,7 @@ local function string_function()
     local random_number
     local random_string
     random_string = ""
-    for x = 1,20,1 do
+    for _ = 1,20,1 do
         random_number = math.random(65, 90)
         random_string = random_string .. string.char(random_number)
     end
@@ -10,7 +10,6 @@ local function string_function()
 end
 
 function delete_replace_update(engine_name, iterations)
-    local string_value
     if (box.space._space.index.name:select{'tester'}[1] ~= nil) then
         box.space.tester:drop()
     end
@@ -40,7 +39,6 @@ function delete_replace_update(engine_name, iterations)
         random_number = math.random(1,6)
 
         string_value_3 = string_function()
---      print('<'..counter..'> [' ..  random_number .. '] value_2: ' .. string_value_2 .. ' value_3: ' .. string_value_3)
         if random_number == 1 then
             box.space.tester:delete{string_value_2}
         end
@@ -69,7 +67,6 @@ function delete_replace_update(engine_name, iterations)
 end
 
 function delete_insert(engine_name, iterations)
-    local string_value
     if (box.space._space.index.name:select{'tester'}[1] ~= nil) then
         box.space.tester:drop()
     end
