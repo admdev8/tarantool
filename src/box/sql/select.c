@@ -1425,6 +1425,7 @@ sql_key_info_new(sql *db, uint32_t part_count)
 		part->type = FIELD_TYPE_SCALAR;
 		part->coll_id = COLL_NONE;
 		part->is_nullable = false;
+		part->exclude_null = false;
 		part->nullable_action = ON_CONFLICT_ACTION_ABORT;
 		part->sort_order = SORT_ORDER_ASC;
 		part->path = NULL;

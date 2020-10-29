@@ -387,6 +387,7 @@ sql_ephemeral_space_create(uint32_t field_count, struct sql_key_info *key_info)
 		part->fieldno = j;
 		part->nullable_action = ON_CONFLICT_ACTION_NONE;
 		part->is_nullable = true;
+		part->exclude_null = false;
 		part->sort_order = SORT_ORDER_ASC;
 		part->path = NULL;
 		part->type = fields[j].type;
