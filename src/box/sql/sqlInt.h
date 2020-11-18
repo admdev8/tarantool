@@ -2260,18 +2260,19 @@ struct Parse {
 	bool initiateTTrans;	/* Initiate Tarantool transaction */
 	/** If set - do not emit byte code at all, just parse.  */
 	bool parse_only;
-	/** Type of parsed_ast member. */
-	enum ast_type parsed_ast_type;
 	/** SQL options which were used to compile this VDBE. */
 	uint32_t sql_flags;
 	/**
 	 * Members of this union are valid only
 	 * if parse_only is set to true.
 	 */
-	union {
-		struct Expr *expr;
-		struct Select *select;
-		struct sql_trigger *trigger;
+	struct {
+		enum ast_type ast_type;	/**< Type of parsed_ast member. */
+		union {
+			struct Expr *expr;
+			struct Select *select;
+			struct sql_trigger *trigger;
+		};
 	} parsed_ast;
 };
 

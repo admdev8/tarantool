@@ -6509,7 +6509,7 @@ sql_expr_extract_select(struct Parse *parser, struct Select *select)
 {
 	struct ExprList *expr_list = select->pEList;
 	assert(expr_list->nExpr == 1);
-	parser->parsed_ast_type = AST_TYPE_EXPR;
+	parser->parsed_ast.ast_type = AST_TYPE_EXPR;
 	/*
 	 * Extract a copy of parsed expression.
 	 * We cannot use EXPRDUP_REDUCE flag in sqlExprDup call

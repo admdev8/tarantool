@@ -218,7 +218,7 @@ sql_parser_destroy(Parse *parser)
 		db->lookaside.bDisable -= parser->disableLookaside;
 	}
 	parser->disableLookaside = 0;
-	switch (parser->parsed_ast_type) {
+	switch (parser->parsed_ast.ast_type) {
 	case AST_TYPE_SELECT:
 		sql_select_delete(db, parser->parsed_ast.select);
 		break;
@@ -229,7 +229,7 @@ sql_parser_destroy(Parse *parser)
 		sql_trigger_delete(db, parser->parsed_ast.trigger);
 		break;
 	default:
-		assert(parser->parsed_ast_type == AST_TYPE_UNDEFINED);
+		assert(parser->parsed_ast.ast_type == AST_TYPE_UNDEFINED);
 	}
 	region_destroy(&parser->region);
 }
