@@ -218,18 +218,20 @@ sql_parser_destroy(Parse *parser)
 		db->lookaside.bDisable -= parser->disableLookaside;
 	}
 	parser->disableLookaside = 0;
-	switch (parser->parsed_ast.ast_type) {
-	case AST_TYPE_SELECT:
-		sql_select_delete(db, parser->parsed_ast.select);
-		break;
-	case AST_TYPE_EXPR:
-		sql_expr_delete(db, parser->parsed_ast.expr, false);
-		break;
-	case AST_TYPE_TRIGGER:
-		sql_trigger_delete(db, parser->parsed_ast.trigger);
-		break;
-	default:
-		assert(parser->parsed_ast.ast_type == AST_TYPE_UNDEFINED);
+	if (parser->parsed_ast.keep_ast != true) {
+		switch (parser->parsed_ast.ast_type) {
+		case AST_TYPE_SELECT:
+			sql_select_delete(db, parser->parsed_ast.select);
+			break;
+		case AST_TYPE_EXPR:
+			sql_expr_delete(db, parser->parsed_ast.expr, false);
+			break;
+		case AST_TYPE_TRIGGER:
+			sql_trigger_delete(db, parser->parsed_ast.trigger);
+			break;
+		default:
+			assert(parser->parsed_ast.ast_type == AST_TYPE_UNDEFINED);
+		}
 	}
 	region_destroy(&parser->region);
 }

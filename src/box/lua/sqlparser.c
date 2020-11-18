@@ -13,7 +13,7 @@
 #include <lualib.h>
 
 int
-sql_stmt_parse(const char *zSql, sql_stmt **ppStmt)
+sql_stmt_parse(const char *zSql, sql_stmt **ppStmt, struct parsed_ast *ast)
 {
 	struct sql *db = sql_get();
 	int rc = 0;	/* Result code */
@@ -21,6 +21,7 @@ sql_stmt_parse(const char *zSql, sql_stmt **ppStmt)
 	sql_parser_create(&sParse, db, current_session()->sql_flags);
 
 	sParse.parse_only = true;	// Parse and build AST only
+	sParse.parsed_ast.keep_ast = true;
 
 	*ppStmt = NULL;
 	/* assert( !db->mallocFailed ); // not true with SQL_USE_ALLOCA */
@@ -39,6 +40,8 @@ sql_stmt_parse(const char *zSql, sql_stmt **ppStmt)
 	} else {
 		*ppStmt = (sql_stmt *) sParse.pVdbe;
 	}
+	*ast = sParse.parsed_ast;
+	assert(ast->keep_ast == true);
 
 #if 0 // FIXME
 	/* Delete any TriggerPrg structures allocated while parsing this statement. */
@@ -49,7 +52,7 @@ sql_stmt_parse(const char *zSql, sql_stmt **ppStmt)
 	}
 #endif
 
-	sql_parser_destroy(&sParse);
+	sql_parser_destroy(&sParse); // FIXME
 	return rc;
 }
 
@@ -72,9 +75,10 @@ lbox_sqlparser_parse(struct lua_State *L)
 
 	uint32_t stmt_id = sql_stmt_calculate_id(sql, length);
 	struct sql_stmt *stmt = sql_stmt_cache_find(stmt_id);
+	struct parsed_ast ast = {0};
 
 	if (stmt == NULL) {
-		if (sql_stmt_parse(sql, &stmt) != 0)
+		if (sql_stmt_parse(sql, &stmt, &ast) != 0)
 			return -1;
 		if (sql_stmt_cache_insert(stmt) != 0) {
 			sql_stmt_finalize(stmt);
