@@ -615,7 +615,7 @@ sql_prepare(const char *sql, int len, struct port *port)
 	if (stmt == NULL) {
 		if (sql_stmt_compile(sql, len, NULL, &stmt, NULL) != 0)
 			return -1;
-		if (sql_stmt_cache_insert(stmt) != 0) {
+		if (sql_stmt_cache_insert(stmt, NULL) != 0) {
 			sql_stmt_finalize(stmt);
 			return -1;
 		}

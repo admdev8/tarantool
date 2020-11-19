@@ -142,7 +142,7 @@ sql_stmt_cache_update(struct sql_stmt *old_stmt, struct sql_stmt *new_stmt);
  * return id of prepared statement via output parameter @id.
  */
 int
-sql_stmt_cache_insert(struct sql_stmt *stmt);
+sql_stmt_cache_insert(struct sql_stmt *stmt, struct sql_parsed_ast *ast);
 
 /** Find entry by SQL string. In case of search fails it returns NULL. */
 struct sql_stmt *

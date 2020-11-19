@@ -64,6 +64,13 @@ struct sql_parsed_ast {
 	};
 };
 
+struct sql_parsed_ast*
+sql_ast_alloc(void);
+
+void
+sql_ast_free(struct sql_parsed_ast *p);
+
+
 #if defined(__cplusplus)
 }
 #endif

@@ -38,6 +38,26 @@
 
 static struct sql_stmt_cache sql_stmt_cache;
 
+struct sql_parsed_ast*
+sql_ast_alloc(void)
+{
+	struct sql_parsed_ast *p = malloc(sizeof(*p));
+	if (p == NULL) {
+		diag_set(OutOfMemory, sizeof(*p), "malloc",
+			 "struct sql_parsed_ast");
+		return NULL;
+	}
+	return p;
+}
+
+void
+sql_ast_free(struct sql_parsed_ast *p)
+{
+	if (p == NULL)
+		return;
+	free(p);
+}
+
 void
 sql_stmt_cache_init(void)
 {
@@ -76,6 +96,7 @@ sql_cache_entry_delete(struct stmt_cache_entry *entry)
 	assert(entry->refs == 0);
 	assert(! sql_stmt_busy(entry->stmt));
 	sql_stmt_finalize(entry->stmt);
+	sql_ast_free(entry->ast);
 	TRASH(entry);
 	free(entry);
 }
@@ -140,6 +161,7 @@ sql_cache_entry_new(struct sql_stmt *stmt)
 		return NULL;
 	}
 	entry->stmt = stmt;
+	entry->ast = NULL;
 	entry->link = (struct rlist) { NULL, NULL };
 	entry->refs = 0;
 	return entry;
@@ -236,7 +258,7 @@ sql_stmt_cache_update(struct sql_stmt *old_stmt, struct sql_stmt *new_stmt)
 }
 
 int
-sql_stmt_cache_insert(struct sql_stmt *stmt)
+sql_stmt_cache_insert(struct sql_stmt *stmt, struct sql_parsed_ast *ast)
 {
 	assert(stmt != NULL);
 	struct sql_stmt_cache *cache = &sql_stmt_cache;
@@ -258,6 +280,7 @@ sql_stmt_cache_insert(struct sql_stmt *stmt)
 	struct stmt_cache_entry *entry = sql_cache_entry_new(stmt);
 	if (entry == NULL)
 		return -1;
+	entry->ast = ast;
 	const char *sql_str = sql_stmt_query_str(stmt);
 	uint32_t stmt_id = sql_stmt_calculate_id(sql_str, strlen(sql_str));
 	assert(sql_stmt_cache_find(stmt_id) == NULL);
