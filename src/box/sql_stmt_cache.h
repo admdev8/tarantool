@@ -33,6 +33,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "sql_ast.h"
 #include "small/rlist.h"
 
 #if defined(__cplusplus)
@@ -40,12 +41,14 @@ extern "C" {
 #endif
 
 struct sql_stmt;
+struct sql_parsed_ast;
 struct mh_i64ptr_t;
 struct info_handler;
 
 struct stmt_cache_entry {
 	/** Prepared statement itself. */
 	struct sql_stmt *stmt;
+	struct sql_parsed_ast *ast; //< preparsed AST (if any)
 	/**
 	 * Link to the next entry. All statements are to be
 	 * evicted on the next gc cycle.

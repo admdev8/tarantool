@@ -75,6 +75,7 @@
 #include "box/sql.h"
 #include "box/txn.h"
 #include "trivia/util.h"
+#include "sql_ast.h"
 
 /*
  * These #defines should enable >2GB file support on POSIX if the
@@ -2123,24 +2124,6 @@ struct TriggerPrg {
 	uint64_t column_mask[2];
 };
 
-enum ast_type {
-	AST_TYPE_UNDEFINED = 0,
-	AST_TYPE_SELECT,
-	AST_TYPE_EXPR,
-	AST_TYPE_TRIGGER,
-	ast_type_MAX
-};
-
-struct parsed_ast {
-	enum ast_type ast_type;	/**< Type of parsed_ast member. */
-	bool keep_ast;		/**< Keep AST after .parse */
-	union {
-		struct Expr *expr;
-		struct Select *select;
-		struct sql_trigger *trigger;
-	};
-};
-
 /*
  * An SQL parser context.  A copy of this structure is passed through
  * the parser and down into all the parser action routine in order to
@@ -2276,7 +2259,7 @@ struct Parse {
 	 * Members of this structure are filled only
 	 * if @parse_only is set to true.
 	 */
-	struct parsed_ast parsed_ast;
+	struct sql_parsed_ast parsed_ast;
 };
 
 /*

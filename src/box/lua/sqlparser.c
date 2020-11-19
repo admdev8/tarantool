@@ -13,7 +13,7 @@
 #include <lualib.h>
 
 int
-sql_stmt_parse(const char *zSql, sql_stmt **ppStmt, struct parsed_ast *ast)
+sql_stmt_parse(const char *zSql, sql_stmt **ppStmt, struct sql_parsed_ast *ast)
 {
 	struct sql *db = sql_get();
 	int rc = 0;	/* Result code */
@@ -75,7 +75,7 @@ lbox_sqlparser_parse(struct lua_State *L)
 
 	uint32_t stmt_id = sql_stmt_calculate_id(sql, length);
 	struct sql_stmt *stmt = sql_stmt_cache_find(stmt_id);
-	struct parsed_ast ast = {0};
+	struct sql_parsed_ast ast;
 
 	if (stmt == NULL) {
 		if (sql_stmt_parse(sql, &stmt, &ast) != 0)
