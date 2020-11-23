@@ -61,6 +61,7 @@ extern const char *sql_info_key_strs[];
 
 struct region;
 struct sql_bind;
+struct sql_parsed_ast;
 
 int
 sql_unprepare(uint32_t stmt_id);
@@ -132,7 +133,8 @@ sql_stmt_est_size(const struct sql_stmt *stmt);
  * Return string of SQL query.
  */
 const char *
-sql_stmt_query_str(const struct sql_stmt *stmt);
+sql_stmt_query_str(const struct sql_stmt *stmt,
+		   const struct sql_parsed_ast *ast);
 
 /** Return true if statement executes right now. */
 int

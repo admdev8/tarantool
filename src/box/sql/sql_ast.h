@@ -55,6 +55,7 @@ enum ast_type {
 };
 
 struct sql_parsed_ast {
+	const char* sql_query; 	/**< original query */
 	enum ast_type ast_type;	/**< Type of parsed_ast member. */
 	bool keep_ast;		/**< Keep AST after .parse */
 	union {

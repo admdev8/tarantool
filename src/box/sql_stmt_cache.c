@@ -41,7 +41,7 @@ static struct sql_stmt_cache sql_stmt_cache;
 struct sql_parsed_ast*
 sql_ast_alloc(void)
 {
-	struct sql_parsed_ast *p = malloc(sizeof(*p));
+	struct sql_parsed_ast *p = calloc(1, sizeof(*p));
 	if (p == NULL) {
 		diag_set(OutOfMemory, sizeof(*p), "malloc",
 			 "struct sql_parsed_ast");
@@ -152,7 +152,7 @@ sql_stmt_cache_gc(void)
  * Add it to the LRU cache list. Account cache size enlargement.
  */
 static struct stmt_cache_entry *
-sql_cache_entry_new(struct sql_stmt *stmt)
+sql_cache_entry_new(struct sql_stmt *stmt, struct sql_parsed_ast *ast)
 {
 	struct stmt_cache_entry *entry = malloc(sizeof(*entry));
 	if (entry == NULL) {
@@ -161,7 +161,7 @@ sql_cache_entry_new(struct sql_stmt *stmt)
 		return NULL;
 	}
 	entry->stmt = stmt;
-	entry->ast = NULL;
+	entry->ast = ast;
 	entry->link = (struct rlist) { NULL, NULL };
 	entry->refs = 0;
 	return entry;
@@ -188,7 +188,7 @@ sql_stmt_cache_entry_unref(struct stmt_cache_entry *entry)
 		 * GC cycle (see sql_stmt_cache_insert()).
 		 */
 		struct sql_stmt_cache *cache = &sql_stmt_cache;
-		const char *sql_str = sql_stmt_query_str(entry->stmt);
+		const char *sql_str = sql_stmt_query_str(entry->stmt, entry->ast);
 		uint32_t stmt_id = sql_stmt_calculate_id(sql_str,
 							 strlen(sql_str));
 		mh_int_t i = mh_i32ptr_find(cache->hash, stmt_id, NULL);
@@ -249,7 +249,7 @@ sql_stmt_unref(uint32_t stmt_id)
 int
 sql_stmt_cache_update(struct sql_stmt *old_stmt, struct sql_stmt *new_stmt)
 {
-	const char *sql_str = sql_stmt_query_str(old_stmt);
+	const char *sql_str = sql_stmt_query_str(old_stmt, NULL);
 	uint32_t stmt_id = sql_stmt_calculate_id(sql_str, strlen(sql_str));
 	struct stmt_cache_entry *entry = stmt_cache_find_entry(stmt_id);
 	sql_stmt_finalize(entry->stmt);
@@ -260,7 +260,7 @@ sql_stmt_cache_update(struct sql_stmt *old_stmt, struct sql_stmt *new_stmt)
 int
 sql_stmt_cache_insert(struct sql_stmt *stmt, struct sql_parsed_ast *ast)
 {
-	assert(stmt != NULL);
+	assert(stmt != NULL || ast != NULL);
 	struct sql_stmt_cache *cache = &sql_stmt_cache;
 	size_t new_entry_size = sql_cache_entry_sizeof(stmt);
 
@@ -277,11 +277,11 @@ sql_stmt_cache_insert(struct sql_stmt *stmt, struct sql_parsed_ast *ast)
 		return -1;
 	}
 	struct mh_i32ptr_t *hash = cache->hash;
-	struct stmt_cache_entry *entry = sql_cache_entry_new(stmt);
+	struct stmt_cache_entry *entry = sql_cache_entry_new(stmt, ast);
 	if (entry == NULL)
 		return -1;
 	entry->ast = ast;
-	const char *sql_str = sql_stmt_query_str(stmt);
+	const char *sql_str = sql_stmt_query_str(stmt, ast);
 	uint32_t stmt_id = sql_stmt_calculate_id(sql_str, strlen(sql_str));
 	assert(sql_stmt_cache_find(stmt_id) == NULL);
 	const struct mh_i32ptr_node_t id_node = { stmt_id, entry };
