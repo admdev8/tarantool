@@ -14,6 +14,8 @@
 #include <lauxlib.h>
 #include <lualib.h>
 
+static int CTID_STRUCT_SQL_PARSED_AST = 0;
+
 /*
  * Remember the SQL string for a prepared statement.
  * Looks same as sqlVdbeSetSql but for AST, not VDBE
@@ -112,6 +114,10 @@ lbox_sqlparser_parse(struct lua_State *L)
 	if (!session_check_stmt_id(current_session(), stmt_id))
 		session_add_stmt_id(current_session(), stmt_id);
 
+	struct sql_parsed_ast** ppast =
+		luaL_pushcdata(L, CTID_STRUCT_SQL_PARSED_AST);
+	*ppast = ast;
+
 	return 1;
 error:
 	return luaT_push_nil_and_error(L);
@@ -151,6 +157,10 @@ lbox_sqlparser_deserialize(struct lua_State *L)
 void
 box_lua_sqlparser_init(struct lua_State *L)
 {
+	luaL_cdef(L, "struct sql_parsed_ast;");
+	CTID_STRUCT_SQL_PARSED_AST = luaL_ctypeid(L, "struct sql_parsed_ast&");
+	assert(CTID_STRUCT_SQL_PARSED_AST != 0);
+
 	static const struct luaL_Reg meta[] = {
 		{ "parse", lbox_sqlparser_parse },
 		{ "unparse", lbox_sqlparser_unparse },
