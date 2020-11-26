@@ -118,6 +118,17 @@ struct port_sql {
 
 extern const struct port_vtab port_sql_vtab;
 
+void
+port_sql_destroy(struct port *base);
+
+void
+port_sql_create(struct port *port, struct sql_stmt *stmt,
+		enum sql_serialization_format format, bool do_finalize);
+
+// FIXME
+int
+sql_execute(struct sql_stmt *stmt, struct port *port, struct region *region);
+
 int
 sql_stmt_finalize(struct sql_stmt *stmt);
 

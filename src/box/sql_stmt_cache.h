@@ -148,6 +148,8 @@ sql_stmt_cache_insert(struct sql_stmt *stmt, struct sql_parsed_ast *ast);
 struct sql_stmt *
 sql_stmt_cache_find(uint32_t stmt_id);
 
+struct stmt_cache_entry *
+stmt_cache_find_entry(uint32_t stmt_id);
 
 /** Set prepared cache size limit. */
 int

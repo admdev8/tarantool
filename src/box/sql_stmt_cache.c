@@ -116,7 +116,7 @@ sql_stmt_cache_delete(struct stmt_cache_entry *entry)
 	sql_cache_entry_delete(entry);
 }
 
-static struct stmt_cache_entry *
+struct stmt_cache_entry *
 stmt_cache_find_entry(uint32_t stmt_id)
 {
 	if (sql_stmt_cache.last_found != NULL &&

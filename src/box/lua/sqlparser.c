@@ -3,6 +3,7 @@
 #include "lua/utils.h"
 #include "sqlInt.h"
 #include "../sql/vdbe.h"	// FIXME
+#include "../sql/vdbeInt.h"	// FIXME
 #include "../execute.h"		// FIXME
 #include "../schema.h"		// FIXME
 #include "../session.h"		// FIXME
@@ -103,20 +104,27 @@ lbox_sqlparser_parse(struct lua_State *L)
 			goto error;
 		}
 	} else {
+#if 0
 		if (sql_stmt_schema_version(stmt) != box_schema_version() &&
 		    !sql_stmt_busy(stmt)) {
 			; //if (sql_reprepare(&stmt) != 0)
 			//	goto error;
 		}
+#endif
 	}
 	assert(ast != NULL);
 	/* Add id to the list of available statements in session. */
 	if (!session_check_stmt_id(current_session(), stmt_id))
 		session_add_stmt_id(current_session(), stmt_id);
 
+#if 0 
 	struct sql_parsed_ast** ppast =
 		luaL_pushcdata(L, CTID_STRUCT_SQL_PARSED_AST);
 	*ppast = ast;
+#else
+	lua_pushinteger(L, (lua_Integer)stmt_id);
+
+#endif
 
 	return 1;
 error:
@@ -139,6 +147,114 @@ lbox_sqlparser_unparse(struct lua_State *L)
 		return luaT_push_nil_and_error(L);
 	return 0;
 }
+
+static struct sql_stmt*
+sql_ast_generate_vdbe(struct lua_State *L, struct stmt_cache_entry *entry)
+{
+	(void)L;
+	struct sql_parsed_ast * ast = entry->ast;
+	if (entry->ast == NULL)	// there is no AST generation yet
+		return NULL;
+
+	// assumption is that we have not yet completed
+	// bytecode generation for parsed AST
+	struct sql_stmt *stmt = entry->stmt;
+	assert(stmt == NULL);
+	struct sql *db = sql_get();
+
+	Parse sParse = {0};
+	sql_parser_create(&sParse, db, current_session()->sql_flags);
+	sParse.parse_only = false;
+
+	struct Vdbe *v = sqlGetVdbe(&sParse);
+	if (v == NULL) {
+		sql_parser_destroy(&sParse);
+		diag_set(OutOfMemory, sizeof(struct Vdbe), "sqlGetVdbe",
+			 "sqlparser");
+		return NULL;
+	}
+
+	// we already parsed AST, thus not calling sqlRunParser
+
+	switch (ast->ast_type) {
+		case AST_TYPE_SELECT: 	// SELECT
+		{
+			Select *p = ast->select;
+			SelectDest dest = {SRT_Output, NULL, 0, 0, 0, 0, NULL};
+
+			sqlSelect(&sParse, p, &dest);
+			sql_select_delete(sParse.db, p);
+			break;
+		}
+
+		default:		// FIXME
+		{
+			assert(0);
+		}
+	}
+	sql_finish_coding(&sParse);
+	sql_parser_destroy(&sParse);
+
+	stmt = (struct sql_stmt*)sParse.pVdbe;
+	return stmt;
+}
+
+static int
+lbox_sqlparser_execute(struct lua_State *L)
+{
+	int top = lua_gettop(L);
+#if 0
+	struct sql_bind *bind = NULL;
+	int bind_count = 0;
+	size_t length;
+	struct port port;
+
+	if (top == 2) {
+		if (! lua_istable(L, 2))
+			return luaL_error(L, "Second argument must be a table");
+		bind_count = lua_sql_bind_list_decode(L, &bind, 2);
+		if (bind_count < 0)
+			return luaT_push_nil_and_error(L);
+	}
+
+#endif
+	assert(top == 1);
+	// FIXME - assuming we are receiving a single 
+	// argument of a prepared AST handle
+	assert(lua_type(L, 1) == LUA_TNUMBER);
+	lua_Integer query_id = lua_tointeger(L, 1);
+#if 0
+	if (!session_check_stmt_id(current_session(), stmt_id)) {
+		diag_set(ClientError, ER_WRONG_QUERY_ID, stmt_id);
+		return -1;
+	}
+#endif
+
+	struct stmt_cache_entry *entry = stmt_cache_find_entry(query_id);
+	assert(entry != NULL);
+
+	// 2. generate 
+	struct sql_stmt *stmt = NULL;
+	struct port port;
+	struct region *region = &fiber()->gc;
+
+	if ((stmt = sql_ast_generate_vdbe(L, entry))) {
+		enum sql_serialization_format format = 
+			sql_column_count(stmt) > 0 ? DQL_EXECUTE : DML_EXECUTE;
+
+		port_sql_create(&port, stmt, format, true);
+		if (sql_execute(stmt, &port, region) != 0) {
+			port_destroy(&port);
+			sql_stmt_reset(stmt);
+			return luaT_push_nil_and_error(L);
+		}
+	}
+	sql_stmt_reset(stmt);
+	port_dump_lua(&port, L, false);
+	port_destroy(&port);
+
+	return 1;
+};
 
 static int
 lbox_sqlparser_serialize(struct lua_State *L)
@@ -172,6 +288,7 @@ box_lua_sqlparser_init(struct lua_State *L)
 		{ "unparse", lbox_sqlparser_unparse },
 		{ "serialize", lbox_sqlparser_serialize },
 		{ "deserialize", lbox_sqlparser_deserialize },
+		{ "execute", lbox_sqlparser_execute },
 		{ NULL, NULL },
 	};
 	luaL_register_module(L, "sqlparser", meta);
