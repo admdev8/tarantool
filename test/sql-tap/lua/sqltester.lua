@@ -9,6 +9,19 @@ local sql_tokenizer = require('sql_tokenizer')
 local ok, test_run = pcall(require, 'test_run')
 test_run = ok and test_run.new() or nil
 
+local use_ast = false
+local _, sqlparser = pcall(require, 'sqlparser')
+
+local execute = use_ast and
+        function(query) -- parse via sqlparser.parse
+            local handle = sqlparser.parse(query)
+            return sqlparser.execute(handle)
+        end
+    or
+        function(query) -- parse via box.execute
+            return box.execute(query)
+        end
+
 local function flatten(arr)
     local result = { }
 
@@ -150,7 +163,7 @@ local function execsql_one_by_one(sql)
     local last_res_rows = nil
     local last_res_metadata = nil
     for _, query in pairs(queries) do
-        local new_res, err = box.execute(query)
+        local new_res, err = execute(query)
         if err ~= nil then
             error(err)
         end

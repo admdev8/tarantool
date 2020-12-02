@@ -1,11 +1,13 @@
 remote = require('net.box')
 test_run = require('test_run').new()
 fiber = require('fiber')
+sqlparser = require('sqlparser')
 
 -- Wrappers to make remote and local execution interface return
 -- same result pattern.
 --
 is_remote = test_run:get_cfg('remote') == 'true'
+via_sqlparser = test_run:get_cfg('sqlparser') == 'true'
 execute = nil
 prepare = nil
 
@@ -17,7 +19,7 @@ if is_remote then
     execute = function(...) return cn:execute(...) end
     prepare = function(...) return cn:prepare(...) end
     unprepare = function(...) return cn:unprepare(...) end
-else
+elseif not via_sqlparser then
     execute = function(...)
         local res, err = box.execute(...)
         if err ~= nil then
@@ -34,6 +36,28 @@ else
     end
     unprepare = function(...)
         local res, err = box.unprepare(...)
+        if err ~= nil then
+            error(err)
+        end
+        return res
+    end
+else
+    execute = function(...)
+        local res, err = sqlparser.execute(...)
+        if err ~= nil then
+            error(err)
+        end
+        return res
+    end
+    prepare = function(...)
+        local res, err = sqlparser.parse(...)
+        if err ~= nil then
+            error(err)
+        end
+        return res
+    end
+    unprepare = function(...)
+        local res, err = sqlparser.unprepare(...)
         if err ~= nil then
             error(err)
         end
