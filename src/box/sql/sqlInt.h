@@ -2262,6 +2262,22 @@ struct Parse {
 	struct sql_parsed_ast parsed_ast;
 };
 
+#define SQL_PARSE_AST_MODE(parser)	(parser)->parse_only
+#define SQL_PARSE_KEEP_AST_MODE(parser)	\
+	(SQL_PARSE_AST_MODE(parser) && 	\
+	(parser)->parsed_ast.keep_ast)
+
+#define AST_VALID(ast)	(ast != NULL && \
+	(ast)->keep_ast && (ast)->ast_type != AST_TYPE_UNDEFINED)
+
+// AST created for known and supported SQL statements
+// e.g. for SELECT at the moment
+#define SQL_PARSE_VALID_AST(parser)	\
+	(SQL_PARSE_AST_MODE(parser) && AST_VALID(&(parser)->parsed_ast))
+// SQL parsed and VDBE constructed
+#define SQL_PARSE_VALID_VDBE(parser)	\
+	((parser)->pVdbe != NULL)
+
 /*
  * Bitfield flags for P5 value in various opcodes.
  *

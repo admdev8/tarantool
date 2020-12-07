@@ -207,7 +207,7 @@ void
 sql_parser_destroy(Parse *parser)
 {
 	assert(parser != NULL);
-	assert(!parser->parse_only || parser->pVdbe == NULL);
+	// assert(!parser->parse_only || parser->pVdbe == NULL); // FIXME2
 	sql *db = parser->db;
 	sqlDbFree(db, parser->aLabel);
 	sql_expr_list_delete(db, parser->pConstExpr);

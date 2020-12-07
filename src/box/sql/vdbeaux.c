@@ -51,7 +51,7 @@
 Vdbe *
 sqlVdbeCreate(Parse * pParse)
 {
-	assert(!pParse->parse_only);
+	// assert(!pParse->parse_only); // FIXME - convert to error log
 	sql *db = pParse->db;
 	Vdbe *p;
 	p = sqlDbMallocRawNN(db, sizeof(Vdbe));
