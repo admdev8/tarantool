@@ -2235,6 +2235,8 @@ sqlVdbeReset(Vdbe * p)
 int
 sqlVdbeFinalize(Vdbe * p)
 {
+	if (p == NULL)
+		return 0;
 	int rc = 0;
 	if (p->magic == VDBE_MAGIC_RUN || p->magic == VDBE_MAGIC_HALT)
 		rc = sqlVdbeReset(p);

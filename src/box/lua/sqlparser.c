@@ -50,6 +50,11 @@ sql_stmt_parse(const char *zSql, sql_stmt **ppStmt, struct sql_parsed_ast *ast)
 	if (sParse.is_aborted)
 		rc = -1;
 
+	if (rc != 0 || db->mallocFailed) {
+		sqlVdbeFinalize(sParse.pVdbe);
+		assert(!(*ppStmt));
+		goto exit_cleanup;
+	}
 	// we have either AST or VDBE, but not both
 	assert(SQL_PARSE_VALID_VDBE(&sParse) != SQL_PARSE_VALID_AST(&sParse));
 	if (SQL_PARSE_VALID_VDBE(&sParse)) {
@@ -57,14 +62,8 @@ sql_stmt_parse(const char *zSql, sql_stmt **ppStmt, struct sql_parsed_ast *ast)
 			Vdbe *pVdbe = sParse.pVdbe;
 			sqlVdbeSetSql(pVdbe, zSql, (int)(sParse.zTail - zSql));
 		}
-		if (rc != 0 || db->mallocFailed) {
-			sqlVdbeFinalize(sParse.pVdbe);
-			assert(!(*ppStmt));
-			//goto exit_cleanup;
-		} else {
-			*ppStmt = (sql_stmt *) sParse.pVdbe;
+		*ppStmt = (sql_stmt *) sParse.pVdbe;
 
-		}
 		/* Delete any TriggerPrg structures allocated while parsing this statement. */
 		while (sParse.pTriggerPrg) {
 			TriggerPrg *pT = sParse.pTriggerPrg;
@@ -78,7 +77,7 @@ sql_stmt_parse(const char *zSql, sql_stmt **ppStmt, struct sql_parsed_ast *ast)
 		sql_ast_set_sql(ast, zSql, (int)(sParse.zTail - zSql));
 	}
 
-//exit_cleanup:
+exit_cleanup:
 	sql_parser_destroy(&sParse);
 	return rc;
 }
@@ -106,7 +105,7 @@ lbox_sqlparser_parse(struct lua_State *L)
 
 	if (stmt == NULL) {
 		if (sql_stmt_parse(sql, &stmt, ast) != 0)
-			return -1;
+			goto error;
 		if (sql_stmt_cache_insert(stmt, ast) != 0) {
 			sql_stmt_finalize(stmt);
 			goto error;

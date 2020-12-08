@@ -14,7 +14,8 @@ local _, sqlparser = pcall(require, 'sqlparser')
 
 local execute = use_ast and
         function(query) -- parse via sqlparser.parse
-            local handle = sqlparser.parse(query)
+            local handle, error = sqlparser.parse(query)
+            if handle == nil then return nil, error end
             return sqlparser.execute(handle)
         end
     or
