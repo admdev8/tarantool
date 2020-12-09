@@ -100,17 +100,21 @@ lbox_sqlparser_parse(struct lua_State *L)
 	const char *sql = lua_tolstring(L, 1, &length);
 
 	uint32_t stmt_id = sql_stmt_calculate_id(sql, length);
-	struct sql_stmt *stmt = sql_stmt_cache_find(stmt_id);
-	struct sql_parsed_ast *ast = sql_ast_alloc();
+	struct stmt_cache_entry *entry = stmt_cache_find_entry(stmt_id);
+	struct sql_parsed_ast *ast = NULL;
 
-	if (stmt == NULL) {
+	if (entry == NULL) {
+		struct sql_stmt *stmt = NULL;
+		ast = sql_ast_alloc();
+
 		if (sql_stmt_parse(sql, &stmt, ast) != 0)
-			goto error;
+			goto return_error;
 		if (sql_stmt_cache_insert(stmt, ast) != 0) {
 			sql_stmt_finalize(stmt);
-			goto error;
+			goto return_error;
 		}
 	} else {
+		ast = entry->ast;
 #if 0
 		if (sql_stmt_schema_version(stmt) != box_schema_version() &&
 		    !sql_stmt_busy(stmt)) {
@@ -124,17 +128,10 @@ lbox_sqlparser_parse(struct lua_State *L)
 	if (!session_check_stmt_id(current_session(), stmt_id))
 		session_add_stmt_id(current_session(), stmt_id);
 
-#if 0 
-	struct sql_parsed_ast** ppast =
-		luaL_pushcdata(L, CTID_STRUCT_SQL_PARSED_AST);
-	*ppast = ast;
-#else
 	lua_pushinteger(L, (lua_Integer)stmt_id);
 
-#endif
-
 	return 1;
-error:
+return_error:
 	return luaT_push_nil_and_error(L);
 }
 

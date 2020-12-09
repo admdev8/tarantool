@@ -280,10 +280,9 @@ sql_stmt_cache_insert(struct sql_stmt *stmt, struct sql_parsed_ast *ast)
 	struct stmt_cache_entry *entry = sql_cache_entry_new(stmt, ast);
 	if (entry == NULL)
 		return -1;
-	entry->ast = ast;
 	const char *sql_str = sql_stmt_query_str(stmt, ast);
 	uint32_t stmt_id = sql_stmt_calculate_id(sql_str, strlen(sql_str));
-	assert(sql_stmt_cache_find(stmt_id) == NULL);
+	assert(stmt_cache_find_entry(stmt_id) == NULL);
 	const struct mh_i32ptr_node_t id_node = { stmt_id, entry };
 	struct mh_i32ptr_node_t *old_node = NULL;
 	mh_int_t i = mh_i32ptr_put(hash, &id_node, &old_node, NULL);
