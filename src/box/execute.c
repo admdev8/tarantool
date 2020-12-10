@@ -724,8 +724,8 @@ sql_execute_prepared(uint32_t stmt_id, const struct sql_bind *bind,
 					       DQL_EXECUTE : DML_EXECUTE;
 	port_sql_create(port, stmt, format, false);
 	if (sql_execute(stmt, port, region) != 0) {
-		port_destroy(port);
-		sql_stmt_reset(stmt);
+		port_destroy(port);	// FIXME - swap order
+		sql_stmt_reset(stmt);	// FIXME
 		return -1;
 	}
 	sql_stmt_reset(stmt);

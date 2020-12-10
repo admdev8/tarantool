@@ -115,6 +115,7 @@ lbox_sqlparser_parse(struct lua_State *L)
 		}
 	} else {
 		ast = entry->ast;
+		//goto return_error; // FIXME - some odd problems here
 #if 0
 		if (sql_stmt_schema_version(stmt) != box_schema_version() &&
 		    !sql_stmt_busy(stmt)) {
@@ -188,8 +189,11 @@ sql_ast_generate_vdbe(struct lua_State *L, struct stmt_cache_entry *entry)
 			Select *p = ast->select;
 			SelectDest dest = {SRT_Output, NULL, 0, 0, 0, 0, NULL};
 
-			sqlSelect(&sParse, p, &dest);
-			sql_select_delete(sParse.db, p);
+			int rc = sqlSelect(&sParse, p, &dest);
+			if (rc != 0)
+				return NULL;
+			// FIXME - reuse of same AST need to be cleaned up eventually
+			// sql_select_delete(sParse.db, p);
 			break;
 		}
 
@@ -240,26 +244,31 @@ lbox_sqlparser_execute(struct lua_State *L)
 	assert(entry != NULL);
 
 	// 2. generate 
-	struct sql_stmt *stmt = NULL;
+	struct sql_stmt *stmt = stmt = sql_ast_generate_vdbe(L, entry);
+	if (stmt == NULL)
+		return luaT_push_nil_and_error(L);
+
 	struct port port;
 	struct region *region = &fiber()->gc;
 
-	if ((stmt = sql_ast_generate_vdbe(L, entry))) {
-		enum sql_serialization_format format = 
-			sql_column_count(stmt) > 0 ? DQL_EXECUTE : DML_EXECUTE;
+	enum sql_serialization_format format =
+		sql_column_count(stmt) > 0 ? DQL_EXECUTE : DML_EXECUTE;
 
-		port_sql_create(&port, stmt, format, true);
-		if (sql_execute(stmt, &port, region) != 0) {
-			port_destroy(&port);
-			sql_stmt_reset(stmt);
-			return luaT_push_nil_and_error(L);
-		}
-	}
+	port_sql_create(&port, stmt, format, true);
+	if (sql_execute(stmt, &port, region) != 0)
+		goto return_error;
+
 	sql_stmt_reset(stmt);
 	port_dump_lua(&port, L, false);
 	port_destroy(&port);
 
 	return 1;
+
+return_error:
+	if (stmt != NULL)
+		sql_stmt_reset(stmt);
+	port_destroy(&port);
+	return luaT_push_nil_and_error(L);
 };
 
 static int
