@@ -1987,6 +1987,7 @@ struct Select {
 #define SF_Converted      0x10000	/* By convertCompoundSelectToSubquery() */
 /** Abort subquery if its output contains more than one row. */
 #define SF_SingleRow      0x20000
+#define SF_CachedAST      0x40000	/* reusing previously parsed AST */
 
 /*
  * The results of a SELECT can be distributed in several ways, as defined
@@ -3049,6 +3050,7 @@ sql_drop_index(struct Parse *parse_context);
 int sqlSelect(Parse *, Select *, SelectDest *);
 Select *sqlSelectNew(Parse *, ExprList *, SrcList *, Expr *, ExprList *,
 			 Expr *, ExprList *, u32, Expr *, Expr *);
+void sqlSelectReset(Select * p);
 
 /**
  * While a SrcList can in general represent multiple spaces and

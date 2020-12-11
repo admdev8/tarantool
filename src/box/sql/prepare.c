@@ -204,6 +204,27 @@ sql_parser_create(struct Parse *parser, struct sql *db, uint32_t sql_flags)
 }
 
 void
+sql_parsed_ast_destroy(struct sql *db, struct sql_parsed_ast *ast)
+{
+	if (ast->keep_ast != true) {
+		switch (ast->ast_type) {
+		case AST_TYPE_SELECT:
+			sql_select_delete(db, ast->select);
+			break;
+		case AST_TYPE_EXPR:
+			sql_expr_delete(db, ast->expr, false);
+			break;
+		case AST_TYPE_TRIGGER:
+			sql_trigger_delete(db, ast->trigger);
+			break;
+		default:
+			assert(ast->ast_type == AST_TYPE_UNDEFINED);
+		}
+	}
+
+}
+
+void
 sql_parser_destroy(Parse *parser)
 {
 	assert(parser != NULL);
@@ -218,20 +239,6 @@ sql_parser_destroy(Parse *parser)
 		db->lookaside.bDisable -= parser->disableLookaside;
 	}
 	parser->disableLookaside = 0;
-	if (parser->parsed_ast.keep_ast != true) {
-		switch (parser->parsed_ast.ast_type) {
-		case AST_TYPE_SELECT:
-			sql_select_delete(db, parser->parsed_ast.select);
-			break;
-		case AST_TYPE_EXPR:
-			sql_expr_delete(db, parser->parsed_ast.expr, false);
-			break;
-		case AST_TYPE_TRIGGER:
-			sql_trigger_delete(db, parser->parsed_ast.trigger);
-			break;
-		default:
-			assert(parser->parsed_ast.ast_type == AST_TYPE_UNDEFINED);
-		}
-	}
+	sql_parsed_ast_destroy(db, &parser->parsed_ast);
 	region_destroy(&parser->region);
 }

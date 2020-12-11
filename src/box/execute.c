@@ -446,7 +446,7 @@ sql_get_params_metadata(struct sql_stmt *stmt, struct obuf *out)
 static int
 sql_get_prepare_common_keys(struct sql_stmt *stmt, struct obuf *out, int keys)
 {
-	const char *sql_str = sql_stmt_query_str(stmt, NULL);
+	const char *sql_str = sql_stmt_query_str(stmt IF_AST_P(NULL));
 	uint32_t stmt_id = sql_stmt_calculate_id(sql_str, strlen(sql_str));
 	int size = mp_sizeof_map(keys) +
 		   mp_sizeof_uint(IPROTO_STMT_ID) +
@@ -590,7 +590,7 @@ sql_stmt_schema_version_is_valid(struct sql_stmt *stmt)
 static int
 sql_reprepare(struct sql_stmt **stmt)
 {
-	const char *sql_str = sql_stmt_query_str(*stmt, NULL);
+	const char *sql_str = sql_stmt_query_str(*stmt IF_AST_P(NULL));
 	struct sql_stmt *new_stmt;
 	if (sql_stmt_compile(sql_str, strlen(sql_str), NULL,
 			     &new_stmt, NULL) != 0)
@@ -615,7 +615,7 @@ sql_prepare(const char *sql, int len, struct port *port)
 	if (stmt == NULL) {
 		if (sql_stmt_compile(sql, len, NULL, &stmt, NULL) != 0)
 			return -1;
-		if (sql_stmt_cache_insert(stmt, NULL) != 0) {
+		if (sql_stmt_cache_insert(stmt IF_AST_P(NULL)) != 0) {
 			sql_stmt_finalize(stmt);
 			return -1;
 		}
@@ -709,7 +709,7 @@ sql_execute_prepared(uint32_t stmt_id, const struct sql_bind *bind,
 		return -1;
 	}
 	if (sql_stmt_busy(stmt)) {
-		const char *sql_str = sql_stmt_query_str(stmt, NULL);
+		const char *sql_str = sql_stmt_query_str(stmt IF_AST_P(NULL));
 		return sql_prepare_and_execute(sql_str, strlen(sql_str), bind,
 					       bind_count, port, region);
 	}

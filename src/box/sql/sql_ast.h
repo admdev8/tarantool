@@ -42,6 +42,23 @@
 extern "C" {
 #endif
 
+/* 
+ * At the moment we disable caching of AST ata-structures
+ * in all SQL stetement cache locations. We will return here
+ * later
+*/
+#define DISABLE_AST_CACHING
+
+#ifndef DISABLE_AST_CACHING
+#  define IF_AST_V(x) x
+#else
+#  define IF_AST_V(x)
+#endif
+
+#define _comma ,
+#define IF_AST_P(arg) IF_AST_V(_comma arg)
+
+
 #include "sql_ast_ffi_defs.h"
 struct sql_parsed_ast*
 sql_ast_alloc(void);

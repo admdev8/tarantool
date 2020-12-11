@@ -1139,7 +1139,7 @@ resolveSelectStep(Walker * pWalker, Select * p)
 	sql *db;		/* Database connection */
 
 	assert(p != 0);
-	if (p->selFlags & SF_Resolved) {
+	if (p->selFlags & SF_Resolved) { // FIXME - here lies the reentrancy bug
 		return WRC_Prune;
 	}
 	pOuterNC = pWalker->u.pNC;

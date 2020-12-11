@@ -41,14 +41,18 @@ extern "C" {
 #endif
 
 struct sql_stmt;
-struct sql_parsed_ast;
 struct mh_i64ptr_t;
 struct info_handler;
+#ifndef DISABLE_AST_CACHING
+struct sql_parsed_ast;
+#endif
 
 struct stmt_cache_entry {
 	/** Prepared statement itself. */
 	struct sql_stmt *stmt;
+#ifndef DISABLE_AST_CACHING
 	struct sql_parsed_ast *ast; //< preparsed AST (if any)
+#endif
 	/**
 	 * Link to the next entry. All statements are to be
 	 * evicted on the next gc cycle.
@@ -142,7 +146,8 @@ sql_stmt_cache_update(struct sql_stmt *old_stmt, struct sql_stmt *new_stmt);
  * return id of prepared statement via output parameter @id.
  */
 int
-sql_stmt_cache_insert(struct sql_stmt *stmt, struct sql_parsed_ast *ast);
+sql_stmt_cache_insert(struct sql_stmt *stmt
+		     IF_AST_P(struct sql_parsed_ast *ast));
 
 /** Find entry by SQL string. In case of search fails it returns NULL. */
 struct sql_stmt *

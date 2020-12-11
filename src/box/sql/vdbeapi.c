@@ -852,15 +852,17 @@ sql_stmt_est_size(const struct sql_stmt *stmt)
 }
 
 const char *
-sql_stmt_query_str(const struct sql_stmt *stmt,
-		   const struct sql_parsed_ast* ast)
+sql_stmt_query_str(const struct sql_stmt *stmt
+		   IF_AST_P(const struct sql_parsed_ast* ast))
 {
 	if (stmt != NULL) {
 		const struct Vdbe *v = (const struct Vdbe *) stmt;
 		return v->zSql;
 	}
+#ifndef DISABLE_AST_CACHING
 	if (ast != NULL)
 		return ast->sql_query;
+#endif
 	return NULL;
 }
 
