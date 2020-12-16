@@ -265,6 +265,258 @@ s:select{}
 
 s:drop()
 
+-- Fixme: anti-dependency
+s = box.schema.space.create('test')
+i1 = s:create_index('pk', {parts={{1, 'uint'}}})
+i2 = s:create_index('sec', {parts={{2, 'uint'}}})
+
+tx1:begin()
+tx2:begin()
+tx1('s:select({0}, {iterator=\'GT\'})')
+tx2('s:select({0}, {iterator=\'GT\'})')
+tx1("s:replace{1, 11}")
+tx2("s:replace{2, 22}")
+tx1:commit()
+tx2:commit()
+
+s:select{}
+
+s:drop()
+
+-- Fixme: write skew, initially empty space, select the whole space
+s = box.schema.space.create('test')
+i1 = s:create_index('pk', {parts={{1, 'uint'}}})
+i2 = s:create_index('sec', {parts={{2, 'uint'}}})
+
+tx1:begin()
+tx2:begin()
+tx1("s:select{}")
+tx2("s:select{}")
+tx1("s:replace{1, 11}")
+tx2("s:replace{2, 22}")
+tx1:commit()
+tx2:commit()
+
+s:select{}
+
+s:drop()
+
+-- G0
+s = box.schema.space.create('test')
+i1 = s:create_index('pk', {parts={{1, 'uint'}}})
+i2 = s:create_index('sec', {parts={{2, 'uint'}}})
+
+s:replace{1, 10}
+s:replace{2, 20}
+
+tx1:begin()
+tx2:begin()
+tx1("s:replace{1, 11}")
+tx2("s:replace{1, 12}")
+tx1("s:replace{2, 21}")
+tx1:commit()
+--tx1("s:select{1}")
+s:select{}
+tx2("s:replace{2, 22}")
+tx2:commit()
+
+s:select{}
+
+s:drop()
+
+-- Fixme: G1a
+s = box.schema.space.create('test')
+i1 = s:create_index('pk', {parts={{1, 'uint'}}})
+i2 = s:create_index('sec', {parts={{2, 'uint'}}})
+
+s:replace{1, 10}
+s:replace{2, 20}
+
+tx1:begin()
+tx2:begin()
+tx1("s:replace{1, 101}")
+tx2("s:select{}")
+tx1:rollback()
+tx2("s:select{}")
+tx2:commit()
+
+s:select{}
+
+s:drop()
+
+-- Fixme: Collect garbage (assertion !tuple->is_dirty in tuple_unref)
+s = box.schema.space.create('test')
+i1 = s:create_index('pk')
+s:replace{1}
+s:drop()
+collectgarbage('collect')
+
+-- Creating unique index after deleting repeated tuple
+s = box.schema.space.create('test')
+i1 = s:create_index('pk')
+dd = s:create_index('dd', {unique = false, parts = {{2, 'uint'}}})
+s:replace{1, 11}
+s:replace{2, 11}
+s:delete{2}
+i2 = s:create_index('sk', {unique = true, parts = {{2, 'uint'}}})
+s:drop()
+
+-- G1b
+s = box.schema.space.create('test')
+i1 = s:create_index('pk', {parts={{1, 'uint'}}})
+i2 = s:create_index('sec', {parts={{2, 'uint'}}})
+
+s:replace{1, 10}
+s:replace{2, 20}
+
+tx1:begin()
+tx2:begin()
+tx1("s:replace{1, 101}")
+tx2("s:select{}")
+tx1("s:replace{1, 11}")
+tx1:commit()
+tx2("s:select{}")
+tx2:commit()
+
+s:select{}
+
+s:drop()
+
+-- G1с
+s = box.schema.space.create('test')
+i1 = s:create_index('pk', {parts={{1, 'uint'}}})
+i2 = s:create_index('sec', {parts={{2, 'uint'}}})
+
+s:replace{1, 10}
+s:replace{2, 20}
+
+tx1:begin()
+tx2:begin()
+tx1("s:replace{1, 11}")
+tx2("s:replace{2, 22}")
+tx1("s:select{}")
+tx2("s:select{}")
+tx1:commit()
+tx2:commit()
+
+s:select{}
+
+s:drop()
+
+-- otv
+s = box.schema.space.create('test')
+i1 = s:create_index('pk', {parts={{1, 'uint'}}})
+i2 = s:create_index('sec', {parts={{2, 'uint'}}})
+
+s:replace{1, 10}
+s:replace{2, 20}
+
+tx1:begin()
+tx2:begin()
+tx3:begin()
+tx1("s:replace{1, 11}")
+tx1("s:replace{2, 19}")
+tx2("s:replace{1, 12}")
+tx1:commit()
+tx3("s:select{}")
+tx2("s:replace{2, 18}")
+tx3("s:select{}")
+tx2:commit()
+tx3:commit()
+
+s:select{}
+
+s:drop()
+
+-- Fixme: pmp
+s = box.schema.space.create('test')
+i1 = s:create_index('pk', {parts={{1, 'uint'}}})
+i2 = s:create_index('sec', {parts={{2, 'uint'}}})
+
+s:replace{1, 10}
+s:replace{2, 20}
+
+tx1:begin()
+tx2:begin()
+-- nothing
+tx1("i2:select{30}")
+tx2("s:insert{3, 30}")
+tx2:commit()
+-- again nothing
+tx1("i2:select{30}")
+tx1:commit()
+
+s:select{}
+
+s:drop()
+
+-- Fixme: pmp-write
+s = box.schema.space.create('test')
+i1 = s:create_index('pk', {parts={{1, 'uint'}}})
+i2 = s:create_index('sec', {parts={{2, 'uint'}}})
+
+s:replace{1, 10}
+s:replace{2, 20}
+
+tx1:begin()
+tx2:begin()
+tx1("s:update({2}, {{'+', 2, 10}})")
+tx1("s:update({1}, {{'+', 2, 10}})")
+tx2("s:select{}")
+tx2("i2:delete{20}")
+tx1:commit()
+tx2("s:select{}")
+tx2:commit()
+--tx1("s:select{}")
+
+s:select{}
+
+s:drop()
+
+-- p4
+s = box.schema.space.create('test')
+i1 = s:create_index('pk', {parts={{1, 'uint'}}})
+i2 = s:create_index('sec', {parts={{2, 'uint'}}})
+
+s:replace{1, 10}
+s:replace{2, 20}
+
+tx1:begin()
+tx2:begin()
+tx1("s:select{1}")
+tx2("s:select{1}")
+tx1("s:replace{1, 11}")
+tx2("s:replace{1, 11}")
+tx1:commit()
+tx2:commit()
+
+s:select{}
+
+s:drop()
+
+-- g-single
+s = box.schema.space.create('test')
+i1 = s:create_index('pk', {parts={{1, 'uint'}}})
+i2 = s:create_index('sec', {parts={{2, 'uint'}}})
+
+s:replace{1, 10}
+s:replace{2, 20}
+
+tx1:begin()
+tx2:begin()
+tx1("s:select{1}")
+tx2("s:select{1}")
+tx2("s:select{2}")
+tx2("s:replace{1, 12}")
+tx2("s:replace{2, 18}")
+tx2:commit()
+tx1("s:select{2}")
+tx1:commit()
+
+s:select{}
+
+s:drop()
+
 test_run:cmd("switch default")
 test_run:cmd("stop server tx_man")
 test_run:cmd("cleanup server tx_man")
