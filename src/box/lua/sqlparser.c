@@ -20,6 +20,7 @@
 #include <lualib.h>
 
 static uint32_t CTID_STRUCT_SQL_PARSED_AST = 0;
+static uint32_t CTID_STRUCT_SQL_STMT = 0;
 
 /*
  * Remember the SQL string for a prepared statement.
@@ -127,9 +128,45 @@ lbox_sql_parsed_ast_gc(struct lua_State *L)
 static void
 luaT_push_sql_parsed_ast(struct lua_State *L, struct sql_parsed_ast *ast)
 {
-	*(struct sql_parsed_ast **) 
+	*(struct sql_parsed_ast **)
 		luaL_pushcdata(L, CTID_STRUCT_SQL_PARSED_AST) = ast;
 	lua_pushcfunction(L, lbox_sql_parsed_ast_gc);
+	luaL_setcdatagc(L, -2);
+}
+
+static inline struct sql_stmt *
+luaT_check_sql_stmt(struct lua_State *L, int idx)
+{
+	if (lua_type(L, idx) != LUA_TCDATA)
+		return NULL;
+
+	uint32_t cdata_type;
+	struct sql_stmt **sql_stmt_ptr = luaL_checkcdata(L, idx, &cdata_type);
+	if (sql_stmt_ptr == NULL || cdata_type != CTID_STRUCT_SQL_STMT)
+		return NULL;
+	return *sql_stmt_ptr;
+}
+
+
+static int
+lbox_sql_stmt_gc(struct lua_State *L)
+{
+#if 0
+	struct sql_stmt *stmt = luaT_check_sql_stmt(L, 1);
+	if (stmt)
+		sqlVdbeDelete((Vdbe *)stmt);
+#else
+	(void)L;
+#endif
+	return 0;
+}
+
+static void
+luaT_push_sql_stmt(struct lua_State *L, struct sql_stmt *stmt)
+{
+	*(struct sql_stmt **)
+		luaL_pushcdata(L, CTID_STRUCT_SQL_STMT) = stmt;
+	lua_pushcfunction(L, lbox_sql_stmt_gc);
 	luaL_setcdatagc(L, -2);
 }
 /**
@@ -185,7 +222,10 @@ lbox_sqlparser_parse(struct lua_State *L)
 
 	lua_pushinteger(L, (lua_Integer)stmt_id);
 #else
-	luaT_push_sql_parsed_ast(L, ast);
+	if (AST_VALID(ast))
+		luaT_push_sql_parsed_ast(L, ast);
+	else
+		luaT_push_sql_stmt(L, stmt);
 #endif
 
 	return 1;
@@ -216,8 +256,8 @@ sql_ast_generate_vdbe(struct lua_State *L, struct stmt_cache_entry *entry)
 {
 	(void)L;
 	struct sql_parsed_ast * ast = entry->ast;
-	// nothing to generate yet - this kind of statement is 
-	// not (yet) supported. Eventually this limitation 
+	// nothing to generate yet - this kind of statement is
+	// not (yet) supported. Eventually this limitation
 	// will be lifted
 	if (!AST_VALID(entry->ast))
 		return entry->stmt;
@@ -232,8 +272,8 @@ sql_ast_generate_vdbe(struct lua_State *L, struct sql_parsed_ast * ast)
 {
 	(void)L;
 
-	// nothing to generate yet - this kind of statement is 
-	// not (yet) supported. Eventually this limitation 
+	// nothing to generate yet - this kind of statement is
+	// not (yet) supported. Eventually this limitation
 	// will be lifted
 	if ( !AST_VALID(ast))
 		return NULL;
@@ -296,8 +336,9 @@ lbox_sqlparser_execute(struct lua_State *L)
 
 #endif
 	assert(top == 1);
+	(void)top;
 #ifndef DISABLE_AST_CACHING
-	// FIXME - assuming we are receiving a single 
+	// FIXME - assuming we are receiving a single
 	// argument of a prepared AST handle
 	assert(lua_type(L, 1) == LUA_TNUMBER);
 	lua_Integer query_id = lua_tointeger(L, 1);
@@ -311,22 +352,23 @@ lbox_sqlparser_execute(struct lua_State *L)
 	struct stmt_cache_entry *entry = stmt_cache_find_entry(query_id);
 	assert(entry != NULL);
 
-	// 2. generate 
+	// 2. generate
 	struct sql_stmt *stmt = stmt = sql_ast_generate_vdbe(L, entry);
 #else
 	struct sql_parsed_ast *ast = luaT_check_sql_parsed_ast(L, 1);
-	assert(ast != NULL);
-
-	// 2. generate 
 	struct sql_stmt *stmt = NULL;
+	if (ast == NULL)
+		stmt = luaT_check_sql_stmt(L, 1);
+	assert(ast != NULL || stmt != NULL); // FIXME - human readable error
 
+	// 2. generate
 	// 2a - supported case: SELECT
 	if (AST_VALID(ast)) {
 		stmt = sql_ast_generate_vdbe(L, ast);
 	}
-	// 2b - unsupported case - bail down to box.execute
+	// 2b - unsupported (yet) case - bail down to box.execute
 	else {
-
+		assert(stmt);
 	}
 #endif
 
@@ -382,6 +424,9 @@ box_lua_sqlparser_init(struct lua_State *L)
 #endif
 	CTID_STRUCT_SQL_PARSED_AST = luaL_ctypeid(L, "struct sql_parsed_ast&");
 	assert(CTID_STRUCT_SQL_PARSED_AST != 0);
+	luaL_cdef(L, "struct sql_stmt;");
+	CTID_STRUCT_SQL_STMT = luaL_ctypeid(L, "struct sql_stmt&");
+	assert(CTID_STRUCT_SQL_STMT != 0);
 
 	static const struct luaL_Reg meta[] = {
 		{ "parse", lbox_sqlparser_parse },
