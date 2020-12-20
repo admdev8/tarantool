@@ -412,16 +412,16 @@ lbox_sqlparser_deserialize(struct lua_State *L)
 	return 1;
 }
 
-extern char sql_ast_ffi_defs_lua[];
+extern char sql_ast_cdef[];
 
 void
 box_lua_sqlparser_init(struct lua_State *L)
 {
-#if 0
-	luaL_cdef(L, "struct sql_parsed_ast;");
-#else
-	luaL_cdef(L, sql_ast_ffi_defs_lua);
-#endif
+	int rc = luaL_cdef(L, sql_ast_cdef);
+	if (rc != LUA_OK) {
+		const char * error = lua_tostring(L, -1);
+		panic("ffi cdef error: %s", error);
+	}
 	CTID_STRUCT_SQL_PARSED_AST = luaL_ctypeid(L, "struct sql_parsed_ast&");
 	assert(CTID_STRUCT_SQL_PARSED_AST != 0);
 	luaL_cdef(L, "struct sql_stmt;");

@@ -1,3 +1,5 @@
+/** \cond ffi */
+
 struct Expr;
 struct Select;
 struct sql_trigger;
@@ -20,3 +22,5 @@ struct sql_parsed_ast {
 		struct sql_trigger *trigger;
 	};
 };
+
+/** \endcond ffi */
