@@ -86,3 +86,42 @@ function(bin_source varname srcfile dstfile)
 
 endfunction()
 
+function(cdef_source varname filename modulename)
+    set (srcfile "${CMAKE_CURRENT_SOURCE_DIR}/${filename}")
+    set (tmpfile "${CMAKE_CURRENT_BINARY_DIR}/${filename}.new.c")
+    set (dstfile "${CMAKE_CURRENT_BINARY_DIR}/${filename}.c")
+    get_filename_component(dstdir ${dstfile} DIRECTORY)
+    if (NOT IS_DIRECTORY ${dstdir})
+        file(MAKE_DIRECTORY ${dstdir})
+    endif()
+
+    get_directory_property(includes INCLUDE_DIRECTORIES)
+    # `COMMAND_EXPAND_LISTS` requires cmake 3.8+, if we need to
+    # support anything older, than we could wrap the logics inside of
+    # fficdefgen.sh script where we would need to manually convert
+    # cmake lists to `-I...`
+    if (NOT POLICY CMP0067)
+        message(FATAL_ERROR "cdef_source() requires CMake 3.8+")
+    endif()
+    set(incs $<$<BOOL:${includes}>:-I;$<JOIN:${includes},;-I;>>)
+    set(generated_sql_inc ${CMAKE_BINARY_DIR}/src/box/sql)
+
+    add_custom_command(OUTPUT ${dstfile}
+        COMMAND_EXPAND_LISTS
+        COMMAND
+            "${CMAKE_CXX_COMPILER}" -E -CC "${incs}" "-I${generated_sql_inc}" 
+                ${srcfile} |
+            ${CMAKE_SOURCE_DIR}/extra/fficdefgen.sh > ${tmpfile}
+        COMMAND ${ECHO} 'const char ${modulename}_cdef[] =' > ${dstfile}
+        COMMAND ${CMAKE_BINARY_DIR}/extra/txt2c ${tmpfile} >> ${dstfile}
+        COMMAND ${ECHO} '\\\;' >> ${dstfile}
+        COMMAND ${CMAKE_COMMAND} -E remove ${tmpfile}
+        DEPENDS
+            ${srcfile}
+            txt2c generate_sql_files
+            ${CMAKE_SOURCE_DIR}/extra/fficdefgen.sh
+    )
+
+    set(var ${${varname}})
+    set(${varname} ${var} ${dstfile} PARENT_SCOPE)
+endfunction()
