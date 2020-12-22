@@ -123,6 +123,7 @@ build_debian: configure_debian
 
 test_debian_no_deps: build_debian
 	cd test && /usr/bin/python test-run.py --force $(TEST_RUN_EXTRA_PARAMS)
+	make LuaJIT-test
 
 test_debian: deps_debian test_debian_no_deps
 
@@ -137,6 +138,7 @@ build_coverage_debian:
 test_coverage_debian_no_deps: build_coverage_debian
 	# Enable --long tests for coverage
 	cd test && /usr/bin/python test-run.py --force $(TEST_RUN_EXTRA_PARAMS) --long
+	make LuaJIT-test
 	lcov --compat-libtool --directory src/ --capture --output-file coverage.info.tmp \
 		--rc lcov_branch_coverage=1 --rc lcov_function_coverage=1
 	lcov --compat-libtool --remove coverage.info.tmp 'tests/*' 'third_party/*' '/usr/*' \
@@ -202,6 +204,7 @@ test_asan_debian_no_deps: build_asan_debian
 		LSAN_OPTIONS=suppressions=${PWD}/asan/lsan.supp \
 		ASAN_OPTIONS=heap_profile=0:unmap_shadow_on_exit=1:detect_invalid_pointer_pairs=1:symbolize=1:detect_leaks=1:dump_instruction_bytes=1:print_suppressions=0 \
 		./test-run.py --force $(TEST_RUN_EXTRA_PARAMS)
+	make LuaJIT-test
 
 test_asan_debian: deps_debian deps_buster_clang_11 test_asan_debian_no_deps
 
@@ -226,6 +229,7 @@ test_static_build_cmake_linux:
 	make -j && ctest -V
 	cd test && /usr/bin/python test-run.py --force \
 		--builddir ${PWD}/static-build/tarantool-prefix/src/tarantool-build $(TEST_RUN_EXTRA_PARAMS)
+	make -C ${PWD}/static-build/tarantool-prefix/src/tarantool-build LuaJIT-test
 
 # ###################
 # Static Analysis
@@ -257,6 +261,7 @@ test_oos_no_deps: build_oos
 		${OOS_SRC_PATH}/test/test-run.py \
 			--builddir ${OOS_BUILD_PATH} \
 			--vardir ${OOS_BUILD_PATH}/test/var --force
+	make -C ${OOS_BUILD_PATH} LuaJIT-test
 
 test_oos: deps_debian test_oos_no_deps
 
@@ -322,6 +327,7 @@ INIT_TEST_ENV_OSX=\
 test_osx_no_deps: build_osx
 	${INIT_TEST_ENV_OSX}; \
 	cd test && ./test-run.py --vardir ${OSX_VARDIR} --force $(TEST_RUN_EXTRA_PARAMS)
+	make LuaJIT-test
 
 test_osx: deps_osx test_osx_no_deps
 
@@ -345,6 +351,7 @@ test_static_build_cmake_osx: base_deps_osx
 	cd test && ./test-run.py --vardir ${OSX_VARDIR} \
 		--builddir ${PWD}/static-build/tarantool-prefix/src/tarantool-build \
 		--force $(TEST_RUN_EXTRA_PARAMS)
+	make -C ${PWD}/static-build/tarantool-prefix/src/tarantool-build LuaJIT-test
 
 
 ###########
@@ -362,6 +369,7 @@ build_freebsd:
 
 test_freebsd_no_deps: build_freebsd
 	cd test && python2.7 test-run.py --force $(TEST_RUN_EXTRA_PARAMS)
+	make LuaJIT-test
 
 test_freebsd: deps_freebsd test_freebsd_no_deps
 
