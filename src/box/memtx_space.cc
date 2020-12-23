@@ -861,8 +861,8 @@ struct memtx_ddl_state {
 static int
 memtx_check_on_replace(struct trigger *trigger, void *event)
 {
-	struct txn *txn = event;
-	struct memtx_ddl_state *state = trigger->data;
+	struct txn *txn = (struct txn *)event;
+	struct memtx_ddl_state *state = (struct memtx_ddl_state *)trigger->data;
 	struct txn_stmt *stmt = txn_current_stmt(txn);
 
 	/* Nothing to check on DELETE. */
@@ -985,8 +985,8 @@ memtx_init_ephemeral_space(struct space *space)
 static int
 memtx_build_on_replace(struct trigger *trigger, void *event)
 {
-	struct txn *txn = event;
-	struct memtx_ddl_state *state = trigger->data;
+	struct txn *txn = (struct txn *)event;
+	struct memtx_ddl_state *state = (struct memtx_ddl_state *)trigger->data;
 	struct txn_stmt *stmt = txn_current_stmt(txn);
 
 	struct tuple *cmp_tuple = stmt->new_tuple != NULL ? stmt->new_tuple :
@@ -1006,12 +1006,12 @@ memtx_build_on_replace(struct trigger *trigger, void *event)
 		return 0;
 	}
 
-	struct tuple *delete = NULL;
+	struct tuple *unused = nullptr;
 	enum dup_replace_mode mode =
 		state->index->def->opts.is_unique ? DUP_INSERT :
 						    DUP_REPLACE_OR_INSERT;
 	state->rc = index_replace(state->index, stmt->old_tuple,
-				  stmt->new_tuple, mode, &delete);
+				  stmt->new_tuple, mode, &unused);
 	if (state->rc != 0) {
 		diag_move(diag_get(), &state->diag);
 		return 0;
@@ -1193,7 +1193,8 @@ struct space *
 memtx_space_new(struct memtx_engine *memtx,
 		struct space_def *def, struct rlist *key_list)
 {
-	struct memtx_space *memtx_space = malloc(sizeof(*memtx_space));
+	struct memtx_space *memtx_space =
+		(struct memtx_space *)malloc(sizeof(*memtx_space));
 	if (memtx_space == NULL) {
 		diag_set(OutOfMemory, sizeof(*memtx_space),
 			 "malloc", "struct memtx_space");
