@@ -8,7 +8,7 @@
 #include "../schema.h"		// FIXME
 #include "../session.h"		// FIXME
 #include "../box.h"		// FIXME
-
+#include "sqlparser.h"
 
 #ifndef DISABLE_AST_CACHING
 #include "box/sql_stmt_cache.h"
@@ -19,7 +19,7 @@
 #include <lauxlib.h>
 #include <lualib.h>
 
-static uint32_t CTID_STRUCT_SQL_PARSED_AST = 0;
+uint32_t CTID_STRUCT_SQL_PARSED_AST = 0;
 static uint32_t CTID_STRUCT_SQL_STMT = 0;
 
 /*
@@ -101,7 +101,7 @@ void sql_ast_reset(struct sql_parsed_ast *ast)
 }
 #endif
 
-static inline struct sql_parsed_ast *
+inline struct sql_parsed_ast *
 luaT_check_sql_parsed_ast(struct lua_State *L, int idx)
 {
 	if (lua_type(L, idx) != LUA_TCDATA)
@@ -125,7 +125,7 @@ lbox_sql_parsed_ast_gc(struct lua_State *L)
 	return 0;
 }
 
-static void
+void
 luaT_push_sql_parsed_ast(struct lua_State *L, struct sql_parsed_ast *ast)
 {
 	*(struct sql_parsed_ast **)
@@ -134,7 +134,7 @@ luaT_push_sql_parsed_ast(struct lua_State *L, struct sql_parsed_ast *ast)
 	luaL_setcdatagc(L, -2);
 }
 
-static inline struct sql_stmt *
+struct sql_stmt *
 luaT_check_sql_stmt(struct lua_State *L, int idx)
 {
 	if (lua_type(L, idx) != LUA_TCDATA)
@@ -161,7 +161,7 @@ lbox_sql_stmt_gc(struct lua_State *L)
 	return 0;
 }
 
-static void
+void
 luaT_push_sql_stmt(struct lua_State *L, struct sql_stmt *stmt)
 {
 	*(struct sql_stmt **)
@@ -398,19 +398,6 @@ return_error:
 	return luaT_push_nil_and_error(L);
 };
 
-static int
-lbox_sqlparser_serialize(struct lua_State *L)
-{
-	lua_pushliteral(L, "sqlparser.serialize");
-	return 1;
-}
-
-static int
-lbox_sqlparser_deserialize(struct lua_State *L)
-{
-	lua_pushliteral(L, "sqlparser.deserialize");
-	return 1;
-}
 
 extern char sql_ast_cdef[];
 
