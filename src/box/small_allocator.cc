@@ -1,7 +1,5 @@
-#ifndef INCLUDES_TARANTOOL_LUA_SLAB_H
-#define INCLUDES_TARANTOOL_LUA_SLAB_H
 /*
- * Copyright 2010-2016, Tarantool AUTHORS, please see AUTHORS file.
+ * Copyright 2010-2020, Tarantool AUTHORS, please see AUTHORS file.
  *
  * Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following
@@ -30,16 +28,47 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#if defined(__cplusplus)
-extern "C" {
-#endif /* defined(__cplusplus) */
+#include "small_allocator.h"
 
-struct lua_State;
-void box_lua_slab_runtime_init(struct lua_State *L);
-void box_lua_slab_init(struct lua_State *L);
+void
+SmallAllocator::create(struct slab_arena *arena,
+		uint32_t objsize_min, float alloc_factor, float *actual_alloc_factor)
+{
+	slab_cache_create(&slab_cache, arena);
+	small_alloc_create(&small_alloc, &slab_cache,
+			   objsize_min, alloc_factor, actual_alloc_factor);
+}
 
-#if defined(__cplusplus)
-} /* extern "C" */
-#endif /* defined(__cplusplus) */
+void
+SmallAllocator::destroy(void)
+{
+	small_alloc_destroy(&small_alloc);
+	slab_cache_destroy(&slab_cache);
+}
 
-#endif /* INCLUDES_TARANTOOL_LUA_SLAB_H */
+void
+SmallAllocator::enter_delayed_free_mode(void)
+{
+	small_alloc_setopt(&small_alloc, SMALL_DELAYED_FREE_MODE, true);
+}
+
+void
+SmallAllocator::leave_delayed_free_mode(void)
+{
+	small_alloc_setopt(&small_alloc, SMALL_DELAYED_FREE_MODE, false);
+}
+
+void
+SmallAllocator::stats(struct small_stats *stats, mempool_stats_cb cb, void *cb_ctx)
+{
+	small_stats(&small_alloc, stats, cb, cb_ctx);
+}
+
+void
+SmallAllocator::memory_check(void)
+{
+	slab_cache_check(&slab_cache);
+}
+
+struct small_alloc SmallAllocator::small_alloc;
+struct slab_cache SmallAllocator::slab_cache;

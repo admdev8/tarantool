@@ -33,6 +33,7 @@
 #include "trivia/config.h"
 
 #include "lua/utils.h" /* lua_hash() */
+#include "lua/slab.h" /* box_lua_slab_init */
 #include "fiber_pool.h"
 #include <say.h>
 #include <scoped_guard.h>
@@ -2541,6 +2542,7 @@ engine_init()
 				    cfg_getd("memtx_memory"),
 				    cfg_geti("memtx_min_tuple_size"),
 				    cfg_geti("strip_core"),
+				    cfg_gets("allocator"),
 				    cfg_getd("slab_alloc_factor"));
 	engine_register((struct engine *)memtx);
 	box_set_memtx_max_tuple_size();
@@ -2947,6 +2949,7 @@ box_cfg_xc(void)
 
 	gc_init();
 	engine_init();
+	box_lua_slab_init(tarantool_L);
 	schema_init();
 	replication_init();
 	port_init();

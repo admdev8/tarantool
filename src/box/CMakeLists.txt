@@ -129,6 +129,7 @@ add_library(box STATIC
     engine.c
     memtx_engine.cc
     memtx_space.cc
+    small_allocator.cc
     sysview.c
     blackhole.c
     service_engine.c
@@ -198,6 +199,7 @@ add_library(box STATIC
     lua/serialize_lua.c
     lua/tuple.c
     lua/slab.c
+    lua/slab.cc
     lua/index.c
     lua/space.cc
     lua/sequence.c

@@ -465,7 +465,7 @@ box_lua_init(struct lua_State *L)
 	box_lua_tuple_init(L);
 	box_lua_call_init(L);
 	box_lua_cfg_init(L);
-	box_lua_slab_init(L);
+	box_lua_slab_runtime_init(L);
 	box_lua_index_init(L);
 	box_lua_space_init(L);
 	box_lua_sequence_init(L);

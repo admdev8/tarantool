@@ -1,7 +1,6 @@
-#ifndef INCLUDES_TARANTOOL_LUA_SLAB_H
-#define INCLUDES_TARANTOOL_LUA_SLAB_H
+#pragma once
 /*
- * Copyright 2010-2016, Tarantool AUTHORS, please see AUTHORS file.
+ * Copyright 2010-2020, Tarantool AUTHORS, please see AUTHORS file.
  *
  * Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following
@@ -30,16 +29,30 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#if defined(__cplusplus)
-extern "C" {
-#endif /* defined(__cplusplus) */
+#include <small/small.h>
 
-struct lua_State;
-void box_lua_slab_runtime_init(struct lua_State *L);
-void box_lua_slab_init(struct lua_State *L);
+struct SmallAllocator
+{
+	static void create(struct slab_arena *arena,
+		uint32_t objsize_min, float alloc_factor,
+		float *actual_alloc_factor);
+	static void destroy(void);
+	static void enter_delayed_free_mode(void);
+	static void leave_delayed_free_mode(void);
+	static void stats(struct small_stats *stats, mempool_stats_cb cb, void *cb_ctx);
+	static void memory_check(void);
+	static inline void *alloc(size_t size) {
+		return smalloc(&small_alloc, size);
+	};
+	static inline void free(void *ptr, size_t size) {
+		smfree(&small_alloc, ptr, size);
+	}
+	static inline void free_delayed(void *ptr, size_t size) {
+		smfree_delayed(&small_alloc, ptr, size);
+	}
 
-#if defined(__cplusplus)
-} /* extern "C" */
-#endif /* defined(__cplusplus) */
-
-#endif /* INCLUDES_TARANTOOL_LUA_SLAB_H */
+	/** Tuple allocator. */
+	static struct small_alloc small_alloc;
+	/** Slab cache for allocating tuples. */
+	static struct slab_cache slab_cache;
+};
