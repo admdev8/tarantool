@@ -21,12 +21,4 @@ end
 
 req_during_auth()
 
--- Check the same for 'initial' state.
-ok, err = nil
-do                                                                              \
-    c = netbox.connect(box.cfg.listen, {wait_connected = false})                \
-    ok, err = pcall(c.call, c, 'echo', {}, {is_async = true})                   \
-end
-ok, err
-c:close()
 box.schema.user.drop('test')
