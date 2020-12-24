@@ -212,6 +212,7 @@ add_library(box STATIC
     lua/xlog.c
     lua/execute.c
     lua/sqlparser.c
+    lua/sqlserialize.c
     lua/key_def.c
     lua/merger.c
     ${bin_sources})
