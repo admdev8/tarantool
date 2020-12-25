@@ -130,6 +130,8 @@ add_library(box STATIC
     memtx_engine.cc
     memtx_space.cc
     small_allocator.cc
+    system_allocator.cc
+    sysalloc.c
     sysview.c
     blackhole.c
     service_engine.c

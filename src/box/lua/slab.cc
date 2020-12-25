@@ -44,14 +44,18 @@
 #include "box/engine.h"
 #include "box/memtx_engine.h"
 #include "box/small_allocator.h"
+#include "box/system_allocator.h"
 
-static int
-small_stats_noop_cb(const struct mempool_stats *stats, void *cb_ctx)
-{
-	(void) stats;
-	(void) cb_ctx;
-	return 0;
+#define STATS_NOOP_CB(allocator, cb_stats)						\
+static int 										\
+allocator##_stats_noop_cb(const struct cb_stats *stats, void *cb_ctx)			\
+{											\
+	(void) stats;									\
+	(void) cb_ctx;									\
+	return 0;									\
 }
+STATS_NOOP_CB(small, mempool_stats)
+STATS_NOOP_CB(system, system_stats)
 
 static int
 small_stats_lua_cb(const struct mempool_stats *stats, void *cb_ctx)
@@ -103,6 +107,25 @@ small_stats_lua_cb(const struct mempool_stats *stats, void *cb_ctx)
 	return 0;
 }
 
+static int
+system_stats_lua_cb(const struct system_stats *stats, void *cb_ctx)
+{
+	struct lua_State *L = (struct lua_State *) cb_ctx;
+	lua_pushnumber(L, lua_objlen(L, -1) + 1);
+	lua_newtable(L);
+	luaL_setmaphint(L, -1);
+	lua_pushstring(L, "mem_used");
+	luaL_pushuint64(L, stats->used);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "mem_free");
+	luaL_pushuint64(L, stats->total - stats->used);
+	lua_settable(L, -3);
+	lua_settable(L, -3);
+	return 0;
+}
+
+
 template <class allocator_stats, class cb_stats, class Allocator,
 	  int (*stats_cb)(const cb_stats *stats, void *cb_ctx)>
 static int
@@ -120,7 +143,7 @@ lbox_slab_stats(struct lua_State *L)
 	Allocator::stats(&totals, stats_cb, L);
 	struct mempool_stats index_stats;
 	mempool_stats(&memtx->index_extent_pool, &index_stats);
-	stats_cb(&index_stats, L);
+	small_stats_lua_cb(&index_stats, L);
 
 	return 1;
 }
@@ -281,6 +304,11 @@ box_lua_slab_init(struct lua_State *L)
 		box_lua_slab_init<struct small_stats,
 			struct mempool_stats, SmallAllocator,
 			small_stats_noop_cb, small_stats_lua_cb>(L);
+		break;
+	case MEMTX_SYSTEM_ALLOCATOR:
+		box_lua_slab_init<struct system_stats,
+			struct system_stats, SystemAllocator,
+			system_stats_noop_cb, system_stats_lua_cb>(L);
 		break;
 	default:
 		;

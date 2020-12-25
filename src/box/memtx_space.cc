@@ -1170,8 +1170,8 @@ memtx_space_prepare_alter(struct space *old_space, struct space *new_space)
 
 /* }}} DDL */
 
-struct SmallAllocator;
 #define MEMTX_SPACE_VTAB(Allocator, allocator)					\
+struct Allocator;								\
 static const struct space_vtab memtx_space_vtab_##allocator = { 		\
 	/* .destroy = */ memtx_space_destroy,					\
 	/* .bsize = */ memtx_space_bsize,					\
@@ -1195,6 +1195,7 @@ static const struct space_vtab memtx_space_vtab_##allocator = { 		\
 	/* .invalidate = */ generic_space_invalidate,   			\
 };
 MEMTX_SPACE_VTAB(SmallAllocator, small)
+MEMTX_SPACE_VTAB(SystemAllocator, system)
 
 struct space *
 memtx_space_new(struct memtx_engine *memtx,
@@ -1230,6 +1231,9 @@ memtx_space_new(struct memtx_engine *memtx,
 	switch (memtx->allocator_type) {
 	case MEMTX_SMALL_ALLOCATOR:
 		vtab = &memtx_space_vtab_small;
+		break;
+	case MEMTX_SYSTEM_ALLOCATOR:
+		vtab = &memtx_space_vtab_system;
 		break;
 	default:
 		tuple_format_unref(format);
