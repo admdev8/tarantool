@@ -39,6 +39,13 @@ sql_walk_select_from(Walker * walker, Select * p, bool dryrun, const char *title
 
 // a set of msgpack helpers to serialize data to ibuf
 
+// we have to be careful enough to manually select _int or _uint
+// variants
+#define mp_sizeof_Xint(v) \
+	(v < 0 ? mp_sizeof_int(v) : mp_sizeof_uint(v))
+#define mp_encode_Xint(data, v) \
+	(v < 0 ? mp_encode_int(data, v) : mp_encode_uint(data, v))
+
 // output string literal
 #define OUT_S(ibuf, s) \
 	data = ibuf_alloc(ibuf, mp_sizeof_str(strlen(s))); \
@@ -62,6 +69,8 @@ sql_walk_select_from(Walker * walker, Select * p, bool dryrun, const char *title
 // outpu title of tuple, expecting map to follow
 #define OUT_TUPLE_TITLE(ibuf, title) \
 	data = ibuf_alloc(ibuf, mp_sizeof_map(1)); \
+	assert(data != NULL); \
+	data = mp_encode_map(data, 1); \
 	assert(data != NULL); \
 	OUT_S(ibuf, title);
 	/* then 1 map expected */
@@ -122,15 +131,15 @@ sql_walk_expr(struct Walker * base, struct Expr * expr, const char *title)
 	OUT_V(ibuf, expr, op, uint);
 	OUT_V(ibuf, expr, type, uint);
 	OUT_V(ibuf, expr, flags, uint);
-	OUT_V(ibuf, expr, u.iValue, int); // FIXME
+	OUT_V(ibuf, expr, u.iValue, Xint); // FIXME
 #if SQL_MAX_EXPR_DEPTH > 0
-	OUT_V(ibuf, expr, nHeight, int);
+	OUT_V(ibuf, expr, nHeight, Xint);
 #endif
-	OUT_V(ibuf, expr, iTable, int);
-	OUT_V(ibuf, expr, iColumn, int);
+	OUT_V(ibuf, expr, iTable, Xint);
+	OUT_V(ibuf, expr, iColumn, Xint);
 
-	OUT_V(ibuf, expr, iAgg, int);
-	OUT_V(ibuf, expr, iRightJoinTable, int);
+	OUT_V(ibuf, expr, iAgg, Xint);
+	OUT_V(ibuf, expr, iRightJoinTable, Xint);
 	OUT_V(ibuf, expr, op2, uint);
 
 	if (ExprHasProperty(expr, (EP_TokenOnly | EP_Leaf)))
@@ -168,7 +177,7 @@ sql_walk_expr_list(struct Walker * base, struct ExprList * p, const char *title)
 	OUT_TUPLE_TITLE(walker->ibuf, title);
 	struct ExprList_item *pItem;
 	int i;
-	size_t n_elems = p->nExpr;
+	int n_elems = p->nExpr;
 	OUT_ARRAY_N(ibuf, n_elems);
 	for (i = p->nExpr, pItem = p->a; i > 0; i--, pItem++) {
 		if (sql_walk_expr(base, pItem->pExpr, "FCK"))
@@ -188,6 +197,7 @@ static int
 sql_walk_select_expr(Walker * walker, Select * p, bool dryrun,
 		    const char *title)
 {
+	(void)title;
 	int rc = 0;
 	if (dryrun != 0) {
 		rc += (p->pEList != NULL) + (p->pWhere != NULL) +
@@ -224,6 +234,8 @@ static int
 sql_walk_select_from(Walker * base, Select * p, bool dryrun, const char *title)
 {
 	SrcList *pSrc = p->pSrc;
+	if (dryrun != 0)
+		return (pSrc != NULL);
 	if (pSrc == NULL)
 		return WRC_Continue;
 
@@ -231,7 +243,7 @@ sql_walk_select_from(Walker * base, Select * p, bool dryrun, const char *title)
 	struct ibuf * ibuf = walker->ibuf;
 	char * data = ibuf->wpos;
 	OUT_TUPLE_TITLE(walker->ibuf, title);
-	size_t n_elems = pSrc->nSrc;
+	int n_elems = pSrc->nSrc;
 	OUT_ARRAY_N(ibuf, n_elems);
 	int i;
 	struct SrcList_item *pItem;
@@ -249,7 +261,7 @@ sql_walk_select_from(Walker * base, Select * p, bool dryrun, const char *title)
 		    sql_walk_expr_list(base, pItem->u1.pFuncArg, "list"))
 			return WRC_Abort;
 	}
-	assert(n_elems == (pSrc->nSRc - i));
+	assert(n_elems == (pSrc->nSrc - i));
 	return WRC_Continue;
 }
 
@@ -299,16 +311,17 @@ sql_walk_select(struct Walker *base, struct Select * p,
 		
 		// "select":{}
 		OUT_TUPLE_TITLE(walker->ibuf, title);
+		data = ibuf_alloc(ibuf, mp_sizeof_map(8 + extra));
 		data = mp_encode_map(data, 8 + extra);
 
 		OUT_V(ibuf, p, op, uint);
-		OUT_V(ibuf, p, nSelectRow, int);
+		OUT_V(ibuf, p, nSelectRow, Xint);
 		OUT_V(ibuf, p, selFlags, uint);
-		OUT_V(ibuf, p, iLimit, int);
-		OUT_V(ibuf, p, iOffset, int);
+		OUT_V(ibuf, p, iLimit, Xint);
+		OUT_V(ibuf, p, iOffset, Xint);
 		OUT_VS(ibuf, p, zSelName);
-		OUT_V(ibuf, p, addrOpenEphm[0], int);
-		OUT_V(ibuf, p, addrOpenEphm[1], int);
+		OUT_V(ibuf, p, addrOpenEphm[0], Xint);
+		OUT_V(ibuf, p, addrOpenEphm[1], Xint);
 		if ((rc = sql_walk_select_expr(base, p, false, "expr")))
 			goto return_error;
 		if ((rc = sql_walk_select_from(base, p, false, "from")))
@@ -352,17 +365,18 @@ lbox_sqlparser_serialize(struct lua_State *L)
 
 	struct sql_parsed_ast *ast = luaT_check_sql_parsed_ast(L, 1);
 
-	if (!AST_VALID(ast)) {
+	if (AST_VALID(ast)) {
 		assert(ast->ast_type == AST_TYPE_SELECT);
 
 		struct ibuf ibuf;
 		ibuf_create(&ibuf, &cord()->slabc, 1024); // FIXME - precise estimate
+		ibuf_reset(&ibuf);
 
 		struct Parse parser;
 		sql_parser_create(&parser, parser.db, default_flags);
 		sqlparser_generate_msgpack_walker(&parser, &ibuf, ast->select);
 
-		lua_pushnumber(L, 1);
+		lua_pushlstring(L, ibuf.rpos, ibuf_used(&ibuf));
 	} else {
 		lua_pushnil(L);
 	}
