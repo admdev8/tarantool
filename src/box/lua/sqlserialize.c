@@ -124,9 +124,7 @@ sql_walk_expr(struct Walker * base, struct Expr * expr, const char *title)
 	extra += (expr->pLeft != NULL) + (expr->pRight != NULL) +
 		(!!ExprHasProperty(expr, EP_xIsSelect) || expr->x.pList != NULL);
 
-	data = mp_encode_map(data, 9 + 
-			     !ExprHasProperty(expr, (EP_TokenOnly | EP_Leaf)) *
-			     extra);
+	OUT_MAP_N(ibuf, 9 + !ExprHasProperty(expr, (EP_TokenOnly | EP_Leaf)) * extra);
 
 	OUT_V(ibuf, expr, op, uint);
 	OUT_V(ibuf, expr, type, uint);
@@ -311,8 +309,7 @@ sql_walk_select(struct Walker *base, struct Select * p,
 		
 		// "select":{}
 		OUT_TUPLE_TITLE(walker->ibuf, title);
-		data = ibuf_alloc(ibuf, mp_sizeof_map(8 + extra));
-		data = mp_encode_map(data, 8 + extra);
+		OUT_MAP_N(ibuf, 8 + extra);
 
 		OUT_V(ibuf, p, op, uint);
 		OUT_V(ibuf, p, nSelectRow, Xint);
