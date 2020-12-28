@@ -31,6 +31,7 @@ local function wait_process_completion(pid, timeout)
             process_completed = true
             break
         end
+        fiber.sleep(0.01)
     end
     return process_completed
 end
@@ -74,8 +75,18 @@ local res = tap.test('gh-4983-tnt-e-assert-false-hangs', function(test)
     local process_completed = wait_process_completion(pid,
             process_waiting_timeout)
 
+    local details
+    pcall(function()
+        details = {
+            cmdline = fio.open(('/proc/%d/cmdline'):format(pid),
+                               {'O_RDONLY'}):read(1000000),
+            status = fio.open(('/proc/%d/status'):format(pid),
+                              {'O_RDONLY'}):read(1000000),
+        }
+    end)
     test:ok(process_completed,
-            ('tarantool process with pid = %d completed'):format(pid))
+            ('tarantool process with pid = %d completed'):format(pid),
+            details)
 
     -- Kill process if hangs.
     if not process_completed then ffi.C.kill(pid, 9) end
