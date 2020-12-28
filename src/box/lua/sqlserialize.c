@@ -120,11 +120,15 @@ sql_walk_expr(struct Walker * base, struct Expr * expr, const char *title)
 	OUT_TUPLE_TITLE(walker->ibuf, title);
 
 	// first we need to estimate number of elements in map
-	size_t extra = (SQL_MAX_EXPR_DEPTH > 0);
-	extra += (expr->pLeft != NULL) + (expr->pRight != NULL) +
-		(!!ExprHasProperty(expr, EP_xIsSelect) || expr->x.pList != NULL);
-
-	OUT_MAP_N(ibuf, 9 + !ExprHasProperty(expr, (EP_TokenOnly | EP_Leaf)) * extra);
+	// cases #2 and #3 below
+	size_t extra = (expr->pLeft != NULL) + (expr->pRight != NULL);
+	// cases #4 and #5
+	extra += !!ExprHasProperty(expr, EP_xIsSelect) || expr->x.pList != NULL;
+	// unless case #1
+	extra *= !ExprHasProperty(expr, (EP_TokenOnly | EP_Leaf));
+	// plus extra field for debugging mode
+	extra += (SQL_MAX_EXPR_DEPTH > 0);
+	OUT_MAP_N(ibuf, 9 + extra);
 
 	OUT_V(ibuf, expr, op, uint);
 	OUT_V(ibuf, expr, type, uint);
@@ -140,22 +144,23 @@ sql_walk_expr(struct Walker * base, struct Expr * expr, const char *title)
 	OUT_V(ibuf, expr, iRightJoinTable, Xint);
 	OUT_V(ibuf, expr, op2, uint);
 
+	// case 1.
 	if (ExprHasProperty(expr, (EP_TokenOnly | EP_Leaf)))
-		return WRC_Abort;
+		return WRC_Continue;
 
+	// cases 2. and 3.
 	if (expr->pLeft && sql_walk_expr(base, expr->pLeft, "left"))
-		return WRC_Abort;
+		return WRC_Continue;
 	if (expr->pRight && sql_walk_expr(base, expr->pRight, "right"))
-		return WRC_Abort;
-
+		return WRC_Continue;
+	// cases 4. and 5.
 	if (ExprHasProperty(expr, EP_xIsSelect)) {
 		if (sql_walk_select(base, expr->x.pSelect, "subselect"))
-			return WRC_Abort;
+			return WRC_Continue;
 	} else if (expr->x.pList) {
 		if (sql_walk_expr_list(base, expr->x.pList, "inexpr"))
-			return WRC_Abort;
+			return WRC_Continue;
 	}
-
 	return WRC_Continue;
 }
 
@@ -233,8 +238,8 @@ sql_walk_select_from(Walker * base, Select * p, bool dryrun, const char *title)
 {
 	SrcList *pSrc = p->pSrc;
 	if (dryrun != 0)
-		return (pSrc != NULL);
-	if (pSrc == NULL)
+		return (pSrc != NULL && pSrc->nSrc != 0);
+	if (pSrc == NULL || pSrc->nSrc == 0)
 		return WRC_Continue;
 
 	struct OutputWalker * walker = (struct OutputWalker*)base;
@@ -246,6 +251,7 @@ sql_walk_select_from(Walker * base, Select * p, bool dryrun, const char *title)
 	int i;
 	struct SrcList_item *pItem;
 
+	assert(pSrc->nSrc != 0);
 	for (i = pSrc->nSrc, pItem = pSrc->a; i > 0; i--, pItem++) {
 		size_t items = (pItem->pSelect != NULL) +
 				(pItem->fg.isTabFunc &&
